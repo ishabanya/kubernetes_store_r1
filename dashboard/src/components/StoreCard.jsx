@@ -41,7 +41,7 @@ export default function StoreCard({ store, onDelete }) {
 
       <div className="store-card-footer">
         <span className="store-card-time">
-          {new Date(store.created_at).toLocaleString()}
+          {new Date(store.created_at + 'Z').toLocaleString()}
         </span>
         <button
           className="btn btn-danger"

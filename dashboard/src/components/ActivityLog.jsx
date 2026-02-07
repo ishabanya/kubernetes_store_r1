@@ -33,7 +33,7 @@ export default function ActivityLog() {
         <div key={log.id} className="activity-log-entry">
           <span className="activity-log-action">{log.action}</span>
           <span className="activity-log-time">
-            {new Date(log.created_at).toLocaleString()}
+            {new Date(log.created_at + 'Z').toLocaleString()}
           </span>
         </div>
       ))}

@@ -21,7 +21,8 @@ db.pragma('foreign_keys = ON');
 db.exec(`
   CREATE TABLE IF NOT EXISTS stores (
     id TEXT PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
     type TEXT NOT NULL DEFAULT 'woocommerce',
     status TEXT NOT NULL DEFAULT 'provisioning',
     namespace TEXT NOT NULL,
@@ -52,6 +53,40 @@ if (!columns.includes('provision_started_at')) {
 }
 if (!columns.includes('provision_finished_at')) {
   db.exec("ALTER TABLE stores ADD COLUMN provision_finished_at DATETIME");
+}
+// Ensure name column is NOT unique and slug column IS unique
+// (handles both fresh slug migration and partial migration from previous deploy)
+const nameColInfo = db.prepare("PRAGMA table_info(stores)").all().find((c) => c.name === 'name');
+const hasSlug = columns.includes('slug');
+const nameIsUnique = db.prepare("PRAGMA index_list(stores)").all().some((idx) => {
+  const cols = db.prepare(`PRAGMA index_info('${idx.name}')`).all();
+  return idx.unique && cols.length === 1 && cols[0].name === 'name';
+});
+
+if (!hasSlug || nameIsUnique) {
+  // Recreate table: add slug if missing, remove UNIQUE from name
+  db.exec(`
+    ALTER TABLE stores RENAME TO stores_old;
+    CREATE TABLE stores (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL DEFAULT 'woocommerce',
+      status TEXT NOT NULL DEFAULT 'provisioning',
+      namespace TEXT NOT NULL,
+      store_url TEXT,
+      admin_url TEXT,
+      error_message TEXT,
+      provision_started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      provision_finished_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO stores (id, name, slug, type, status, namespace, store_url, admin_url, error_message, provision_started_at, provision_finished_at, created_at, updated_at)
+      SELECT id, name, COALESCE(slug, name), type, status, namespace, store_url, admin_url, error_message, provision_started_at, provision_finished_at, created_at, updated_at
+      FROM stores_old;
+    DROP TABLE stores_old;
+  `);
 }
 
 // Mark any stale "provisioning" stores as "failed" on startup

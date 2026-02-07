@@ -47,7 +47,8 @@ export class WooCommerceProvisioner {
   }
 
   async deprovision(store) {
-    const releaseName = `wc-${store.name}`;
+    const slug = store.slug || store.name;
+    const releaseName = `wc-${slug}`;
     try {
       await helmClient.uninstall(releaseName, store.namespace);
     } catch (err) {

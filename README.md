@@ -1,219 +1,238 @@
 # Kubernetes Store Orchestration Platform
 
-A self-service platform for deploying isolated WooCommerce stores on Kubernetes. Each store gets its own namespace with MariaDB, WordPress+WooCommerce, ingress, and security policies. Designed to run locally on Minikube and deploy to production (k3s VPS) with only Helm values changes.
+> **Self-service platform for deploying fully isolated WooCommerce stores on Kubernetes.**
+> Each store runs in its own namespace with dedicated MariaDB, WordPress + WooCommerce, ingress routing, network policies, and resource quotas — provisioned in minutes through a single-click dashboard.
+
+---
+
+## Highlights
+
+- **One-click store provisioning** via React dashboard
+- **Full namespace isolation** — each store gets its own DB, secrets, quotas, and network policies
+- **Async provisioning** with concurrency queue (no HTTP timeouts)
+- **Helm-driven** — same charts for local dev and production, only values change
+- **Audit trail** and **metrics endpoint** for observability
+- **Rate limiting** and **abuse prevention** built in
+
+---
 
 ## Architecture
 
 ```
-User → React Dashboard → Express Backend API → Kubernetes API / Helm CLI
-                                                      ↓
-                                              Per-Store Namespace
-                                              ├── MariaDB (StatefulSet + PVC)
-                                              ├── WordPress+WooCommerce (Deployment + PVC)
-                                              ├── WP-CLI Init Job (post-install hook)
-                                              ├── Ingress (<store>.127-0-0-1.nip.io)
-                                              ├── Secrets, ResourceQuota, LimitRange
-                                              └── NetworkPolicy
+                         +-------------------+
+                         |  React Dashboard  |
+                         |  (Vite + nginx)   |
+                         +--------+----------+
+                                  |
+                            POST /api/stores
+                                  |
+                         +--------v----------+
+                         |  Express Backend  |
+                         |  SQLite + Helm CLI|
+                         +--------+----------+
+                                  |
+                          helm install / uninstall
+                                  |
+              +-------------------v--------------------+
+              |         Kubernetes Cluster             |
+              |                                        |
+              |   +--- store-<name> namespace -------+ |
+              |   | MariaDB (StatefulSet + PVC)      | |
+              |   | WordPress + WooCommerce (Deploy)  | |
+              |   | WP-CLI Init Job (post-install)   | |
+              |   | Ingress, Secrets, NetworkPolicy   | |
+              |   | ResourceQuota, LimitRange         | |
+              |   +----------------------------------+ |
+              +----------------------------------------+
 ```
 
 **Key components:**
-- **Dashboard**: React SPA (Vite) served via nginx, polls backend for status updates
-- **Backend**: Express.js API with SQLite, orchestrates Helm CLI for K8s provisioning
-- **WooCommerce Chart**: Per-store Helm chart creating a full WordPress+WooCommerce stack
-- **Platform Chart**: Helm chart for the dashboard, backend, RBAC, and ingress
 
-## Prerequisites
+| Component | Description |
+|-----------|-------------|
+| **Dashboard** | React SPA (Vite) served via nginx, reverse-proxies API calls to backend |
+| **Backend** | Express.js REST API with SQLite, orchestrates Kubernetes via Helm CLI |
+| **WooCommerce Chart** | Per-store Helm chart — MariaDB, WordPress, WP-CLI init, ingress, security |
+| **Platform Chart** | Helm chart for dashboard, backend, RBAC, and HPA |
 
-- Docker
-- Minikube
-- kubectl
-- Helm 3
+---
 
-### macOS
+## Getting Started
+
+### 1. Clone the Repository
 
 ```bash
-# Install Homebrew (if not installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Install Docker Desktop
-brew install --cask docker
-# Or use Colima (lightweight alternative):
-brew install docker colima && colima start --cpu 2 --memory 4 --disk 8
-
-# Install Kubernetes tools
-brew install minikube kubectl helm
+git clone https://github.com/ishabanya/kubernetes_store_r1.git
+cd kubernetes_store_r1
 ```
 
-### Windows
+### 2. Install Prerequisites
+
+<details>
+<summary><strong>macOS</strong></summary>
+
+```bash
+# Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Docker Desktop
+brew install --cask docker
+# Or use Colima (lightweight alternative):
+# brew install docker colima && colima start --cpu 2 --memory 4 --disk 8
+
+# Kubernetes tools
+brew install minikube kubectl helm
+```
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
 
 ```powershell
-# Install Chocolatey (if not installed) — run PowerShell as Administrator
+# Chocolatey (run PowerShell as Administrator)
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-# Install Docker Desktop (requires WSL2 — enable it first if not already)
+# Docker Desktop (requires WSL2)
 wsl --install
 choco install docker-desktop -y
 
-# Install Kubernetes tools
+# Kubernetes tools
 choco install minikube kubernetes-cli kubernetes-helm -y
-
-# Restart terminal after installation
 ```
 
-> **Windows notes:**
-> - Docker Desktop requires **WSL2** enabled. After installing, open Docker Desktop and ensure "Use the WSL 2 based engine" is checked in Settings > General.
-> - Use **PowerShell** or **Git Bash** for all commands below. If using PowerShell, replace `eval $(minikube docker-env)` with `& minikube docker-env --shell powershell | Invoke-Expression`.
-> - `minikube tunnel` must run in a separate terminal (as Administrator on Windows).
+> **Notes:** Enable "WSL 2 based engine" in Docker Desktop settings. Use **PowerShell** or **Git Bash** for all commands. Replace `eval $(minikube docker-env)` with `& minikube docker-env --shell powershell | Invoke-Expression`.
+</details>
 
-### Linux (Ubuntu/Debian)
+<details>
+<summary><strong>Linux (Ubuntu / Debian)</strong></summary>
 
 ```bash
-# Install Docker
-sudo apt-get update
-sudo apt-get install -y docker.io
-sudo usermod -aG docker $USER
-newgrp docker
+# Docker
+sudo apt-get update && sudo apt-get install -y docker.io
+sudo usermod -aG docker $USER && newgrp docker
 
-# Install Minikube
+# Minikube
 curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
-# Install kubectl
+# kubectl
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install kubectl /usr/local/bin/kubectl
 
-# Install Helm
+# Helm
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
+</details>
 
-## Quick Start (Local with Minikube)
-
-### macOS / Linux
+### 3. Deploy Locally (macOS / Linux)
 
 ```bash
-# 1. Start Minikube with sufficient resources
+# Start Minikube
 minikube start --cpus=2 --memory=3072 --driver=docker
 minikube addons enable ingress
 
-# 2. Build images inside Minikube's Docker daemon
+# Build images inside Minikube's Docker daemon
 eval $(minikube docker-env)
 docker build -t store-platform-backend:latest -f Dockerfile.backend .
 docker build -t store-platform-dashboard:latest ./dashboard/
 
-# 3. Deploy the platform
+# Deploy the platform
 helm upgrade --install store-platform ./helm/store-platform/ \
   -f ./helm/store-platform/values-local.yaml --wait
 
-# 4. Port-forward to access the dashboard and stores
+# Port-forward (dashboard + store ingress)
 kubectl port-forward -n store-platform svc/dashboard 8080:80 &
 kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80 &
-
-# 5. Open the dashboard
-open http://localhost:8080    # macOS
-xdg-open http://localhost:8080  # Linux
 ```
 
-Or use the setup script:
+Or use the automated setup script:
 ```bash
 chmod +x scripts/setup-local.sh && ./scripts/setup-local.sh
 ```
 
-### Windows (PowerShell)
+<details>
+<summary><strong>Windows (PowerShell)</strong></summary>
 
 ```powershell
-# 1. Start Minikube with sufficient resources
 minikube start --cpus=2 --memory=3072 --driver=docker
 minikube addons enable ingress
 
-# 2. Build images inside Minikube's Docker daemon
 & minikube docker-env --shell powershell | Invoke-Expression
 docker build -t store-platform-backend:latest -f Dockerfile.backend .
 docker build -t store-platform-dashboard:latest ./dashboard/
 
-# 3. Deploy the platform
 helm upgrade --install store-platform ./helm/store-platform/ `
   -f ./helm/store-platform/values-local.yaml --wait
 
-# 4. Port-forward to access the dashboard and stores (run each in a separate terminal)
-# Terminal 1:
+# Run each in a separate terminal:
 kubectl port-forward -n store-platform svc/dashboard 8080:80
-# Terminal 2:
 kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80
-
-# 5. Open the dashboard
-Start-Process "http://localhost:8080"
 ```
+</details>
+
+### 4. Open the Dashboard
+
+```
+http://localhost:8080
+```
+
+---
+
+## Usage: Create a Store & Place an Order
+
+### Step 1 — Create a Store
+1. Open `http://localhost:8080` and click **+ Create Store**
+2. Enter any name you like (e.g., `My Awesome Shop`)
+3. Set your **Admin Username** and **Admin Password** (or leave password blank to auto-generate)
+4. Click **Create Store** — provisioning begins
+
+### Step 2 — Wait for Ready
+- Dashboard auto-polls every 5 seconds
+- Status: **Provisioning** &#8594; **Ready** (typically 3-5 minutes)
+
+### Step 3 — Browse & Order
+1. Click the **Store URL** on the card (e.g., `http://my-awesome-shop.127-0-0-1.nip.io:8082`)
+2. Add a product to cart &#8594; **Proceed to Checkout**
+3. Fill in any billing details &#8594; select **Cash on Delivery** &#8594; **Place Order**
+4. Verify in WP Admin: click the **Admin URL** &#8594; **WooCommerce** &#8594; **Orders**
+
+### Step 4 — Delete a Store
+1. Click **Delete** on the store card &#8594; confirm
+2. All resources (pods, PVCs, secrets, ingress, namespace) are removed
 
 ### Accessing Stores
 
-Once a store is created and shows **Ready** status:
-- **Store URL**: `http://<store-name>.127-0-0-1.nip.io:8082` (clickable from dashboard)
-- **Admin URL**: `http://<store-name>.127-0-0-1.nip.io:8082/wp-admin`
+| URL | Purpose |
+|-----|---------|
+| `http://localhost:8080` | Dashboard |
+| `http://<store>.127-0-0-1.nip.io:8082` | Store frontend |
+| `http://<store>.127-0-0-1.nip.io:8082/wp-admin` | WP Admin panel |
 
-> Port 8082 is the ingress controller port-forward. Both port-forwards (8080 for dashboard, 8082 for stores) must be running.
+> Both port-forwards (8080 for dashboard, 8082 for stores) must be running. [nip.io](https://nip.io) provides zero-config wildcard DNS — no `/etc/hosts` editing needed.
 
-### Local Domain Approach
+---
 
-We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
-- `<store-name>.127-0-0-1.nip.io` resolves to `127.0.0.1` automatically
-- No `/etc/hosts` editing required
-- Works on all platforms (macOS, Windows, Linux)
-- Each store gets a unique subdomain (e.g., `my-shop.127-0-0-1.nip.io:8082`)
+## Production Deployment (k3s VPS)
 
-## Creating a Store and Placing an Order
+<details>
+<summary><strong>Click to expand production setup</strong></summary>
 
-### Step 1: Create a Store
-1. Open the dashboard at `http://localhost:8080`
-2. Click **Create Store**
-3. Enter a name (lowercase letters, numbers, hyphens — e.g., `my-shop`)
-4. Select **WooCommerce** as the store type
-5. Set your **Admin Username** and **Admin Password** (or leave password empty to auto-generate)
-6. Click **Create** — the store starts provisioning
-
-### Step 2: Wait for Ready Status
-- The dashboard auto-polls every 5 seconds
-- Status progresses: **Provisioning** → **Ready**
-- Provisioning takes 3-5 minutes (MariaDB startup + WordPress init + WooCommerce install)
-- If a store fails, the error message is displayed on the card
-
-### Step 3: Place a Test Order (COD)
-1. Click the **Store URL** link on the store card (e.g., `http://my-shop.127-0-0-1.nip.io:8082`)
-2. You'll see the WooCommerce Storefront with sample products
-3. Find a product (e.g., "Sample Product" at $19.99)
-4. Click **Add to Cart**
-5. Go to **Cart** → **Proceed to Checkout**
-6. Fill in billing details (any test data is fine)
-7. Select **Cash on Delivery** as the payment method
-8. Click **Place Order**
-9. Verify the order was created:
-   - Click the **Admin URL** on the store card (e.g., `http://my-shop.127-0-0-1.nip.io:8082/wp-admin`)
-   - Log in with the admin credentials you set during store creation
-   - Navigate to **WooCommerce → Orders** — you should see the order
-   - If you used auto-generated password, retrieve it: `kubectl get secret my-shop-wp-secret -n store-my-shop -o jsonpath='{.data.admin-password}' | base64 -d`
-
-### Step 4: Delete a Store
-1. Click **Delete** on the store card in the dashboard
-2. Confirm deletion in the dialog
-3. The system runs `helm uninstall` → `kubectl delete namespace`
-4. All resources (pods, PVCs, secrets, ingress) are removed
-
-## VPS / Production Setup (k3s)
-
-### 1. Install k3s on your VPS
+### 1. Install k3s
 ```bash
 curl -sfL https://get.k3s.io | sh -
-kubectl get nodes   # verify k3s is running
+kubectl get nodes
 ```
 
 ### 2. Configure DNS
-Add these DNS records pointing to your VPS IP:
-- `*.stores.yourdomain.com → VPS_IP` (wildcard A record for store subdomains)
-- `dashboard.stores.yourdomain.com → VPS_IP`
-- `api.stores.yourdomain.com → VPS_IP`
+| Record | Value |
+|--------|-------|
+| `*.stores.yourdomain.com` | VPS IP (wildcard A) |
+| `dashboard.stores.yourdomain.com` | VPS IP |
+| `api.stores.yourdomain.com` | VPS IP |
 
-### 3. Push Images to a Container Registry
+### 3. Push Images
 ```bash
 docker build -t ghcr.io/youruser/store-platform-backend:v1.0.0 -f Dockerfile.backend .
 docker build -t ghcr.io/youruser/store-platform-dashboard:v1.0.0 ./dashboard/
@@ -221,12 +240,12 @@ docker push ghcr.io/youruser/store-platform-backend:v1.0.0
 docker push ghcr.io/youruser/store-platform-dashboard:v1.0.0
 ```
 
-### 4. (Optional) Install cert-manager for TLS
+### 4. (Optional) TLS with cert-manager
 ```bash
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 ```
 
-### 5. Deploy with Production Values
+### 5. Deploy
 ```bash
 helm upgrade --install store-platform ./helm/store-platform/ \
   -f ./helm/store-platform/values-prod.yaml \
@@ -235,26 +254,43 @@ helm upgrade --install store-platform ./helm/store-platform/ \
   --wait
 ```
 
-### What Changes Between Local and Production
+### Local vs Production
 
-| Concern | Local (Minikube) | Production (k3s VPS) |
-|---------|------------------|----------------------|
+| Concern | Local (Minikube) | Production (k3s) |
+|---------|------------------|-------------------|
 | Ingress class | nginx | traefik |
-| Base domain | 127-0-0-1.nip.io | stores.yourdomain.com |
-| Image pull | `Never` (local build) | `Always` (registry) |
+| Base domain | `127-0-0-1.nip.io` | `stores.yourdomain.com` |
+| Image pull | `Never` (local) | `Always` (registry) |
 | Replicas | 1 | 2 (HPA up to 5) |
-| TLS | None | cert-manager |
+| TLS | None | cert-manager + Let's Encrypt |
 | Max stores | 10 | 50 |
 
-All differences are handled via `values-local.yaml` vs `values-prod.yaml` — **same Helm charts, same templates**.
+Same Helm charts, same templates — **only values change**.
+</details>
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/stores` | Create a store |
+| `GET` | `/api/stores` | List all stores |
+| `GET` | `/api/stores/:id` | Get store details |
+| `DELETE` | `/api/stores/:id` | Delete a store |
+| `GET` | `/api/stores/audit/log` | Audit trail |
+| `GET` | `/api/metrics` | Platform metrics |
+| `GET` | `/api/health` | Health check |
+
+---
 
 ## Upgrade & Rollback
 
 ```bash
-# View Helm release history
+# View release history
 helm history store-platform
 
-# Upgrade to a new version
+# Upgrade with a new image
 helm upgrade store-platform ./helm/store-platform/ \
   -f ./helm/store-platform/values-prod.yaml \
   --set backend.image=ghcr.io/youruser/store-platform-backend:v1.1.0
@@ -263,17 +299,51 @@ helm upgrade store-platform ./helm/store-platform/ \
 helm rollback store-platform 1
 ```
 
-## API Endpoints
+---
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | /api/stores | Create store (name, type) |
-| GET | /api/stores | List all stores + status |
-| GET | /api/stores/:id | Get store detail |
-| DELETE | /api/stores/:id | Delete store + cleanup |
-| GET | /api/stores/audit/log | Get audit log |
-| GET | /api/metrics | Platform metrics (counts, durations) |
-| GET | /api/health | Health check |
+## Project Structure
+
+```
+kubernetes_store_r1/
+├── dashboard/                    # React (Vite) frontend
+│   ├── src/
+│   │   ├── components/           # StoreList, StoreCard, CreateStoreDialog, etc.
+│   │   ├── services/api.js       # Axios API client
+│   │   └── App.jsx               # Tab navigation (Stores / Activity Log)
+│   ├── Dockerfile                # Multi-stage: Node build -> nginx serve
+│   └── nginx.conf                # Reverse proxy /api/ to backend
+├── backend/                      # Node.js + Express API
+│   ├── src/
+│   │   ├── controllers/          # REST route handlers
+│   │   ├── services/             # Business logic + provisioners
+│   │   ├── kubernetes/           # Helm CLI wrapper
+│   │   ├── middleware/           # Rate limiting, error handling
+│   │   ├── database/            # SQLite (better-sqlite3)
+│   │   └── utils/               # Logger, validation
+│   └── package.json
+├── Dockerfile.backend            # Backend image with Helm + kubectl
+├── helm/
+│   ├── store-platform/           # Platform chart (dashboard, backend, RBAC, HPA)
+│   │   ├── templates/
+│   │   ├── values.yaml
+│   │   ├── values-local.yaml
+│   │   └── values-prod.yaml
+│   └── woocommerce-store/        # Per-store chart
+│       ├── templates/            # MariaDB, WordPress, init job, ingress, etc.
+│       ├── values.yaml
+│       ├── values-local.yaml
+│       └── values-prod.yaml
+├── scripts/
+│   ├── setup-local.sh            # Automated local setup
+│   ├── teardown.sh               # Clean everything up
+│   └── add-hosts.sh              # Fallback /etc/hosts setup
+├── docs/
+│   ├── system-design.md          # Architecture, tradeoffs, scaling, security
+│   └── local-to-prod.md          # Local vs production differences
+└── README.md
+```
+
+---
 
 ## Teardown
 
@@ -286,55 +356,17 @@ helm uninstall store-platform -n store-platform
 minikube stop && minikube delete
 ```
 
-## Project Structure
+---
 
-```
-├── dashboard/               # React (Vite) frontend
-│   ├── src/
-│   │   ├── components/      # StoreList, StoreCard, CreateStoreDialog, etc.
-│   │   ├── services/api.js  # Axios API client
-│   │   └── App.jsx          # Tab navigation (Stores / Activity Log)
-│   ├── Dockerfile           # Multi-stage: Node build → nginx serve
-│   └── nginx.conf           # Reverse proxy /api/ to backend
-├── backend/                 # Node.js + Express API
-│   ├── src/
-│   │   ├── controllers/     # REST route handlers
-│   │   ├── services/        # Business logic + provisioners
-│   │   ├── kubernetes/      # Helm CLI wrapper
-│   │   ├── middleware/       # Rate limiting, error handling
-│   │   ├── database/        # SQLite (better-sqlite3)
-│   │   └── utils/           # Logger, validation
-│   └── package.json
-├── Dockerfile.backend       # Backend image with helm + kubectl baked in
-├── helm/
-│   ├── store-platform/      # Platform chart (dashboard + backend + RBAC + HPA)
-│   │   ├── templates/       # 11 templates including HPA
-│   │   ├── values.yaml
-│   │   ├── values-local.yaml
-│   │   └── values-prod.yaml
-│   └── woocommerce-store/   # Per-store chart
-│       ├── templates/       # 11 templates (MariaDB, WP, init job, ingress, etc.)
-│       ├── values.yaml
-│       ├── values-local.yaml
-│       └── values-prod.yaml
-├── scripts/
-│   ├── setup-local.sh       # Automated local setup
-│   ├── teardown.sh          # Clean everything up
-│   └── add-hosts.sh         # Fallback /etc/hosts setup
-├── docs/
-│   ├── system-design.md     # Architecture, tradeoffs, scaling, security
-│   └── local-to-prod.md     # Local vs production differences
-└── README.md
-```
+## Documentation
 
-## System Design Documentation
+See **[docs/system-design.md](docs/system-design.md)** for in-depth coverage:
 
-See [docs/system-design.md](docs/system-design.md) for detailed coverage of:
-- Architecture choices and tradeoffs
+- Architecture decisions and tradeoffs
 - Isolation model (namespaces, ResourceQuota, LimitRange, NetworkPolicy)
 - Idempotency, failure handling, and cleanup guarantees
-- Security posture (secrets, RBAC, container hardening, NetworkPolicy)
-- Horizontal scaling plan (HPA, concurrency queue, stateful constraints)
+- Security posture (secrets, RBAC, container hardening)
+- Horizontal scaling plan (HPA, concurrency queue)
 - Abuse prevention (rate limiting, quotas, audit trail)
-- Local-to-VPS production story (Helm values differences)
-- Upgrade/rollback approach
+- Local-to-production story
+- Upgrade / rollback approach

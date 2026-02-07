@@ -3,6 +3,7 @@ import db from '../database/db.js';
 import woocommerceProvisioner from './woocommerceProvisioner.js';
 import medusaProvisioner from './medusaProvisioner.js';
 import logger from '../utils/logger.js';
+import { slugify } from '../utils/nameValidator.js';
 
 const MAX_STORES = parseInt(process.env.MAX_STORES || '10', 10);
 const MAX_CONCURRENT_PROVISIONS = parseInt(process.env.MAX_CONCURRENT_PROVISIONS || '3', 10);
@@ -17,8 +18,8 @@ const provisioners = {
 
 // Prepared statements
 const insertStore = db.prepare(`
-  INSERT INTO stores (id, name, type, status, namespace, store_url, admin_url, provision_started_at)
-  VALUES (?, ?, ?, 'provisioning', ?, NULL, NULL, CURRENT_TIMESTAMP)
+  INSERT INTO stores (id, name, slug, type, status, namespace, store_url, admin_url, provision_started_at)
+  VALUES (?, ?, ?, ?, 'provisioning', ?, NULL, NULL, CURRENT_TIMESTAMP)
 `);
 
 const updateStoreStatus = db.prepare(`
@@ -27,9 +28,10 @@ const updateStoreStatus = db.prepare(`
 `);
 
 const getStoreById = db.prepare('SELECT * FROM stores WHERE id = ?');
-const getStoreByName = db.prepare('SELECT * FROM stores WHERE name = ?');
+const getStoreBySlug = db.prepare('SELECT * FROM stores WHERE slug = ?');
 const getAllStores = db.prepare("SELECT * FROM stores WHERE status != 'deleted' ORDER BY created_at DESC");
 const countActiveStores = db.prepare("SELECT COUNT(*) as count FROM stores WHERE status NOT IN ('deleted', 'failed')");
+const deleteStoreRow = db.prepare("DELETE FROM stores WHERE id = ?");
 
 const insertAuditLog = db.prepare(`
   INSERT INTO audit_log (store_id, action, details, ip_address)
@@ -65,24 +67,36 @@ export async function createStore({ name, type = 'woocommerce', adminUser = 'adm
     throw err;
   }
 
-  // Check duplicate
-  const existing = getStoreByName.get(name);
-  if (existing && existing.status !== 'deleted') {
-    const err = new Error(`Store "${name}" already exists`);
+  const slug = slugify(name);
+  if (!slug || slug.length < 2) {
+    const err = new Error('Store name must contain at least 2 alphanumeric characters');
+    err.status = 400;
+    throw err;
+  }
+
+  // Check duplicate by slug
+  const existing = getStoreBySlug.get(slug);
+  if (existing && !['deleted', 'failed'].includes(existing.status)) {
+    const err = new Error(`A store with a similar name already exists ("${existing.name}")`);
     err.status = 409;
     throw err;
   }
 
+  // Remove old deleted/failed row so the slug can be reused
+  if (existing) {
+    deleteStoreRow.run(existing.id);
+  }
+
   const id = uuidv4();
-  const namespace = `store-${name}`;
+  const namespace = `store-${slug}`;
 
-  insertStore.run(id, name, type, namespace);
-  audit(id, 'create', { name, type }, ip);
+  insertStore.run(id, name, slug, type, namespace);
+  audit(id, 'create', { name, slug, type }, ip);
 
-  logger.info({ id, name, type }, 'Store created, starting provisioning');
+  logger.info({ id, name, slug, type }, 'Store created, starting provisioning');
 
   // Enqueue provisioning with concurrency control
-  enqueueProvision(id, name, type, namespace, adminUser, adminPassword);
+  enqueueProvision(id, slug, type, namespace, adminUser, adminPassword);
 
   return getStoreById.get(id);
 }

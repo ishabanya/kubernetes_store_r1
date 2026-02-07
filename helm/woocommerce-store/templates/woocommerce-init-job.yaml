@@ -148,8 +148,8 @@ spec:
               $WP comment delete 1 --force 2>/dev/null || true
 
               echo "=== Skipping Onboarding Wizard ==="
-              $WP option update woocommerce_onboarding_profile '{"completed":true}' --format=json
-              $WP option update woocommerce_task_list_hidden "yes"
+              $WP option update woocommerce_onboarding_profile '{"completed":true}' --format=json || true
+              $WP option update woocommerce_task_list_hidden "yes" 2>/dev/null || true
 
               echo "=== Flushing Rewrite Rules ==="
               $WP rewrite structure '/%postname%/'

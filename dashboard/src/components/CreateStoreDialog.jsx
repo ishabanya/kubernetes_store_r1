@@ -8,21 +8,12 @@ export default function CreateStoreDialog({ onClose, onSubmit }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const namePattern = /^[a-z][a-z0-9-]*[a-z0-9]$/;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (name.length < 3) {
-      setError('Name must be at least 3 characters');
-      return;
-    }
-
-    if (!namePattern.test(name)) {
-      setError(
-        'Name must start with a letter, contain only lowercase letters, numbers, and hyphens, and end with a letter or number'
-      );
+    if (name.trim().length < 2) {
+      setError('Name must be at least 2 characters');
       return;
     }
 
@@ -58,13 +49,13 @@ export default function CreateStoreDialog({ onClose, onSubmit }) {
               id="store-name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value.toLowerCase())}
-              placeholder="my-store"
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Awesome Store"
               autoFocus
               disabled={loading}
             />
             <div className="form-hint">
-              Lowercase letters, numbers, and hyphens only (e.g. my-shop-01)
+              Any name you like — a URL-safe slug is auto-generated
             </div>
           </div>
 
