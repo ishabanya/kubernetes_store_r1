@@ -1,5 +1,7 @@
 # Kubernetes Store Orchestration Platform
 
+**Built by Shabanya** | [GitHub](https://github.com/ishabanya)
+
 > **Self-service platform for deploying fully isolated WooCommerce stores on Kubernetes.**
 > Each store runs in its own namespace with dedicated MariaDB, WordPress + WooCommerce, ingress routing, network policies, and resource quotas — provisioned in minutes through a single-click dashboard.
 
@@ -370,3 +372,9 @@ See **[docs/system-design.md](docs/system-design.md)** for in-depth coverage:
 - Abuse prevention (rate limiting, quotas, audit trail)
 - Local-to-production story
 - Upgrade / rollback approach
+
+---
+
+## Author
+
+**Shabanya** — [github.com/ishabanya](https://github.com/ishabanya)
