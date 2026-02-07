@@ -402,20 +402,20 @@ You should see the Store Platform header bar and an empty-state prompt inviting 
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Dashboard: Open localhost:8080
-    Dashboard --> CreateModal: Click "+ Create Store"
-    CreateModal --> Dashboard: Cancel
-    CreateModal --> Provisioning: Submit form
-    Provisioning --> Ready: Helm install completes (~3-5 min)
-    Provisioning --> Failed: Error during install
-    Ready --> StoreFrontend: Click Store URL
-    Ready --> WPAdmin: Click Admin URL
-    Ready --> DeleteModal: Click Delete
-    DeleteModal --> Dashboard: Cancel
-    DeleteModal --> Deleting: Confirm delete
-    Deleting --> Dashboard: Resources removed
-    Dashboard --> ActivityLog: Switch to Activity Log tab
-    ActivityLog --> Dashboard: Switch to Stores tab
+    [*] --> Dashboard
+    Dashboard --> CreateModal : Click Create Store
+    CreateModal --> Dashboard : Cancel
+    CreateModal --> Provisioning : Submit form
+    Provisioning --> Ready : Helm install completes
+    Provisioning --> Failed : Error during install
+    Ready --> StoreFrontend : Click Store URL
+    Ready --> WPAdmin : Click Admin URL
+    Ready --> DeleteModal : Click Delete
+    DeleteModal --> Dashboard : Cancel
+    DeleteModal --> Deleting : Confirm delete
+    Deleting --> Dashboard : Resources removed
+    Dashboard --> ActivityLog : Switch tab
+    ActivityLog --> Dashboard : Switch tab
 ```
 
 ---
