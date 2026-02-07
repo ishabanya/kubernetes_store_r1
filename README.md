@@ -1,51 +1,216 @@
+<div align="center">
+
 # Kubernetes Store Orchestration Platform
 
 **Built by Shabanya** | [GitHub](https://github.com/ishabanya)
 
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)](https://kubernetes.io)
+[![Helm](https://img.shields.io/badge/Helm-0F1689?style=for-the-badge&logo=helm&logoColor=white)](https://helm.sh)
+[![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![WooCommerce](https://img.shields.io/badge/WooCommerce-96588A?style=for-the-badge&logo=woocommerce&logoColor=white)](https://woocommerce.com)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+
 > **Self-service platform for deploying fully isolated WooCommerce stores on Kubernetes.**
+>
 > Each store runs in its own namespace with dedicated MariaDB, WordPress + WooCommerce, ingress routing, network policies, and resource quotas — provisioned in minutes through a single-click dashboard.
+
+---
+
+### Deploy a production-grade e-commerce store in 3 clicks.
+
+[Getting Started](#getting-started) | [UI Walkthrough](#ui-walkthrough) | [Architecture](#architecture) | [API Reference](#api-reference)
+
+</div>
 
 ---
 
 ## Highlights
 
-- **One-click store provisioning** via React dashboard
-- **Full namespace isolation** — each store gets its own DB, secrets, quotas, and network policies
-- **Async provisioning** with concurrency queue (no HTTP timeouts)
-- **Helm-driven** — same charts for local dev and production, only values change
-- **Audit trail** and **metrics endpoint** for observability
-- **Rate limiting** and **abuse prevention** built in
+| | Feature | Description |
+|---|---------|-------------|
+| **1-Click Deploy** | One-click store provisioning | Name your store, click create, and a full WooCommerce instance spins up with its own database, secrets, and ingress |
+| **Live Status** | Real-time status tracking | Dashboard auto-polls every 5s during provisioning with animated spinners and color-coded status badges |
+| **Isolated** | Full namespace isolation | Every store gets its own Kubernetes namespace, MariaDB, secrets, network policies, and resource quotas |
+| **Observable** | Activity log & metrics | Built-in audit trail tab and `/api/metrics` endpoint for full observability |
+| **Secure** | Rate limiting & abuse prevention | Request throttling, store count quotas, and RBAC-scoped service accounts |
+| **Portable** | Same charts everywhere | Helm-driven architecture — identical templates for local dev and production, only values change |
+
+---
+
+## UI Walkthrough
+
+### The Dashboard
+
+The platform ships with a polished **React SPA** (Vite + nginx) that serves as your single control plane. The interface follows a clean, minimal design language:
+
+- **Dark header bar** (`#1a1a2e`) with the platform title and a prominent **"+ Create Store"** CTA button in blue (`#4361ee`)
+- **Tab navigation** — switch between **Stores** (grid view) and **Activity Log** (audit trail) with an underline-animated tab bar
+- **Responsive card grid** — stores are displayed in a `CSS Grid` layout (`minmax(340px, 1fr)`) that auto-fills columns based on viewport width
+- **Empty state** — when no stores exist, a centered message guides users: *"Click Create Store to deploy your first WooCommerce store"*
+
+---
+
+### Store Cards
+
+Each store is represented as a **card component** with clear visual hierarchy:
+
+```
++-----------------------------------------------+
+|  My Awesome Shop              [ READY ]        |  <-- name + status badge
+|  WooCommerce                                   |  <-- platform type (subtle gray)
+|                                                |
+|  Store: http://my-awesome-shop.127...nip.io    |  <-- clickable links (blue)
+|  Admin: http://my-awesome-shop.127...nip.io/wp |
+|                                                |
+|  Feb 8, 2026, 2:30 PM            [ Delete ]   |  <-- timestamp + danger action
++-----------------------------------------------+
+```
+
+**Status badges** are color-coded pill elements with semantic meaning:
+
+| Badge | Color | Meaning |
+|-------|-------|---------|
+| `READY` | Green (`#dcfce7` / `#166534`) | Store is live and accepting traffic |
+| `PROVISIONING` | Amber (`#fef3c7` / `#92400e`) | Helm install in progress — includes animated CSS spinner |
+| `DELETING` | Amber (`#fef3c7` / `#92400e`) | Helm uninstall in progress — includes animated CSS spinner |
+| `FAILED` | Red (`#fef2f2` / `#dc2626`) | Provisioning error — error message shown inline on card |
+
+Cards feature a **hover elevation effect** (`box-shadow` transitions from `0 1px 3px` to `0 4px 12px`) for clear interactive affordance.
+
+---
+
+### Create Store Dialog
+
+Clicking **"+ Create Store"** opens a **centered modal** with a backdrop overlay (`rgba(0,0,0,0.5)`) that closes on outside click:
+
+```
++------------------------------------------+
+|  Create New Store                        |
+|                                          |
+|  Store Name                              |
+|  [ My Awesome Store            ]         |
+|  Any name you like — a URL-safe slug     |
+|  is auto-generated                       |
+|                                          |
+|  Platform                                |
+|  [ WooCommerce               v ]         |
+|                                          |
+|  Admin Username                          |
+|  [ admin                       ]         |
+|                                          |
+|  Admin Password                          |
+|  [ ******************************** ]    |
+|  Min 6 characters. Leave empty to        |
+|  auto-generate.                          |
+|                                          |
+|              [ Cancel ]  [ Create Store ] |
++------------------------------------------+
+```
+
+**Form UX details:**
+- **Auto-focus** on the store name field for immediate typing
+- **Inline validation** — name must be 2+ chars, username 3+ chars, password 6+ chars
+- **Error messages** appear in red below the form before submission is allowed
+- **Loading state** — the submit button shows "Creating..." and all fields are disabled during the API call
+- **Platform selector** — WooCommerce is the active option; MedusaJS is shown as "Coming Soon" (disabled)
+- **Focus ring** — inputs show a blue glow (`box-shadow: 0 0 0 3px rgba(67,97,238,0.1)`) on focus for accessibility
+
+---
+
+### Delete Confirmation
+
+Clicking **Delete** on a store card opens a **confirmation modal** to prevent accidental data loss:
+
+```
++------------------------------------------+
+|  Delete Store                            |
+|                                          |
+|  Are you sure you want to delete         |
+|  My Awesome Shop? This will remove all   |
+|  data, including the database and        |
+|  uploaded files. This action cannot be   |
+|  undone.                                 |
+|                                          |
+|              [ Cancel ]  [ Delete Store ] |
++------------------------------------------+
+```
+
+- **Destructive action** button is red (`#ef4444`) to signal danger
+- Button shows "Deleting..." during the async operation
+- Both buttons are disabled while deletion is in progress
+
+---
+
+### Activity Log
+
+Switching to the **Activity Log** tab shows a chronological audit trail:
+
+```
++----------------------------------------------+
+|  Activity Log                                |
+|                                              |
+|  store.created (my-awesome-shop)    2:30 PM  |
+|  store.ready (my-awesome-shop)      2:34 PM  |
+|  store.deleted (old-store)          1:15 PM  |
++----------------------------------------------+
+```
+
+- **Action names** in bold, **timestamps** in muted gray (`#94a3b8`)
+- Entries separated by subtle dividers (`1px solid #f1f5f9`)
+- Fetches the 20 most recent audit entries on tab switch
+
+---
+
+### Design System
+
+The dashboard uses a consistent design system throughout:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| **Primary** | `#4361ee` | Buttons, links, active tab, focus rings |
+| **Danger** | `#ef4444` | Delete buttons, error text |
+| **Surface** | `#ffffff` | Cards, modals, activity log |
+| **Background** | `#f0f2f5` | Page background |
+| **Header** | `#1a1a2e` | Top bar background |
+| **Text Primary** | `#1a1a2e` | Headings, body text |
+| **Text Muted** | `#94a3b8` | Timestamps, hints |
+| **Border Radius** | `12px` / `8px` | Cards & modals / Buttons & inputs |
+| **Font Stack** | `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto` | System font for native feel |
+| **Transition** | `all 0.2s` | Buttons, cards, inputs — consistent motion |
 
 ---
 
 ## Architecture
 
-```
-                         +-------------------+
-                         |  React Dashboard  |
-                         |  (Vite + nginx)   |
-                         +--------+----------+
-                                  |
-                            POST /api/stores
-                                  |
-                         +--------v----------+
-                         |  Express Backend  |
-                         |  SQLite + Helm CLI|
-                         +--------+----------+
-                                  |
-                          helm install / uninstall
-                                  |
-              +-------------------v--------------------+
-              |         Kubernetes Cluster             |
-              |                                        |
-              |   +--- store-<name> namespace -------+ |
-              |   | MariaDB (StatefulSet + PVC)      | |
-              |   | WordPress + WooCommerce (Deploy)  | |
-              |   | WP-CLI Init Job (post-install)   | |
-              |   | Ingress, Secrets, NetworkPolicy   | |
-              |   | ResourceQuota, LimitRange         | |
-              |   +----------------------------------+ |
-              +----------------------------------------+
+```mermaid
+flowchart TD
+    User([User]) -->|opens localhost:8080| Dashboard
+
+    subgraph Platform["Store Platform (Kubernetes)"]
+        Dashboard["React Dashboard\n(Vite + nginx)"]
+        Backend["Express Backend\n(SQLite + Helm CLI)"]
+        Dashboard -->|POST /api/stores| Backend
+        Backend -->|helm install / uninstall| K8s
+
+        subgraph K8s["Kubernetes Cluster"]
+            subgraph NS1["store-alpha namespace"]
+                DB1[(MariaDB\nStatefulSet + PVC)]
+                WP1[WordPress +\nWooCommerce]
+                Job1[WP-CLI\nInit Job]
+                Ing1[Ingress]
+                Sec1[Secrets &\nNetworkPolicy]
+            end
+            subgraph NS2["store-beta namespace"]
+                DB2[(MariaDB)]
+                WP2[WordPress]
+                Ing2[Ingress]
+            end
+        end
+    end
+
+    User -->|store-alpha.nip.io:8082| Ing1
+    Ing1 --> WP1
+    WP1 --> DB1
 ```
 
 **Key components:**
@@ -180,29 +345,46 @@ kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80
 http://localhost:8080
 ```
 
+You should see the Store Platform header bar and an empty-state prompt inviting you to create your first store.
+
 ---
 
-## Usage: Create a Store & Place an Order
+## Usage: End-to-End Walkthrough
 
 ### Step 1 — Create a Store
-1. Open `http://localhost:8080` and click **+ Create Store**
-2. Enter any name you like (e.g., `My Awesome Shop`)
-3. Set your **Admin Username** and **Admin Password** (or leave password blank to auto-generate)
-4. Click **Create Store** — provisioning begins
 
-### Step 2 — Wait for Ready
-- Dashboard auto-polls every 5 seconds
-- Status: **Provisioning** &#8594; **Ready** (typically 3-5 minutes)
+1. Open `http://localhost:8080` — you'll land on the **Stores** tab with the card grid
+2. Click the blue **"+ Create Store"** button in the header bar
+3. The **Create New Store** modal slides in with a backdrop overlay
+4. Fill in the form:
+   - **Store Name** — enter any name (e.g., `My Awesome Shop`). A URL-safe slug is auto-generated
+   - **Platform** — WooCommerce is pre-selected
+   - **Admin Username** — defaults to `admin`
+   - **Admin Password** — leave blank to auto-generate, or set your own (6+ chars)
+5. Click **"Create Store"** — the button changes to "Creating..." and fields lock
 
-### Step 3 — Browse & Order
+### Step 2 — Watch Provisioning in Real-Time
+
+- A new card appears in the grid with an **amber PROVISIONING badge** and a rotating **CSS spinner**
+- The dashboard **auto-polls every 5 seconds** while any store is provisioning
+- Behind the scenes: Helm installs MariaDB, WordPress, WP-CLI init job, ingress, secrets, network policies, and resource quotas
+- After 3-5 minutes the badge flips to **green READY** — store and admin URLs appear on the card
+
+### Step 3 — Browse the Store & Place an Order
+
 1. Click the **Store URL** on the card (e.g., `http://my-awesome-shop.127-0-0-1.nip.io:8082`)
-2. Add a product to cart &#8594; **Proceed to Checkout**
-3. Fill in any billing details &#8594; select **Cash on Delivery** &#8594; **Place Order**
-4. Verify in WP Admin: click the **Admin URL** &#8594; **WooCommerce** &#8594; **Orders**
+2. You'll see a fully initialized WooCommerce storefront with sample products
+3. Add a product to cart and click **Proceed to Checkout**
+4. Fill in any billing details, select **Cash on Delivery**, and click **Place Order**
+5. Verify in WP Admin: click the **Admin URL** on the card, then navigate to **WooCommerce > Orders**
 
 ### Step 4 — Delete a Store
-1. Click **Delete** on the store card &#8594; confirm
-2. All resources (pods, PVCs, secrets, ingress, namespace) are removed
+
+1. Click the red **"Delete"** button on the store card
+2. A **confirmation modal** warns that all data will be permanently removed
+3. Click **"Delete Store"** — the badge changes to **amber DELETING** with a spinner
+4. Once complete, the card disappears from the grid
+5. Switch to the **Activity Log** tab to see the `store.deleted` audit entry
 
 ### Accessing Stores
 
@@ -213,6 +395,28 @@ http://localhost:8080
 | `http://<store>.127-0-0-1.nip.io:8082/wp-admin` | WP Admin panel |
 
 > Both port-forwards (8080 for dashboard, 8082 for stores) must be running. [nip.io](https://nip.io) provides zero-config wildcard DNS — no `/etc/hosts` editing needed.
+
+---
+
+## User Flows
+
+```mermaid
+stateDiagram-v2
+    [*] --> Dashboard: Open localhost:8080
+    Dashboard --> CreateModal: Click "+ Create Store"
+    CreateModal --> Dashboard: Cancel
+    CreateModal --> Provisioning: Submit form
+    Provisioning --> Ready: Helm install completes (~3-5 min)
+    Provisioning --> Failed: Error during install
+    Ready --> StoreFrontend: Click Store URL
+    Ready --> WPAdmin: Click Admin URL
+    Ready --> DeleteModal: Click Delete
+    DeleteModal --> Dashboard: Cancel
+    DeleteModal --> Deleting: Confirm delete
+    Deleting --> Dashboard: Resources removed
+    Dashboard --> ActivityLog: Switch to Activity Log tab
+    ActivityLog --> Dashboard: Switch to Stores tab
+```
 
 ---
 
@@ -276,13 +480,13 @@ Same Helm charts, same templates — **only values change**.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/stores` | Create a store |
-| `GET` | `/api/stores` | List all stores |
-| `GET` | `/api/stores/:id` | Get store details |
-| `DELETE` | `/api/stores/:id` | Delete a store |
-| `GET` | `/api/stores/audit/log` | Audit trail |
-| `GET` | `/api/metrics` | Platform metrics |
-| `GET` | `/api/health` | Health check |
+| `POST` | `/api/stores` | Create a store (triggers async Helm install) |
+| `GET` | `/api/stores` | List all stores with current status |
+| `GET` | `/api/stores/:id` | Get single store details |
+| `DELETE` | `/api/stores/:id` | Delete a store (triggers async Helm uninstall) |
+| `GET` | `/api/stores/audit/log` | Audit trail of all actions |
+| `GET` | `/api/metrics` | Platform metrics (store counts, resource usage) |
+| `GET` | `/api/health` | Health check endpoint |
 
 ---
 
@@ -309,15 +513,21 @@ helm rollback store-platform 1
 kubernetes_store_r1/
 ├── dashboard/                    # React (Vite) frontend
 │   ├── src/
-│   │   ├── components/           # StoreList, StoreCard, CreateStoreDialog, etc.
+│   │   ├── components/
+│   │   │   ├── StoreList.jsx     # Grid view with polling & empty state
+│   │   │   ├── StoreCard.jsx     # Card with status badge, URLs, delete
+│   │   │   ├── CreateStoreDialog.jsx   # Modal form with validation
+│   │   │   ├── DeleteConfirmDialog.jsx # Destructive action confirmation
+│   │   │   └── ActivityLog.jsx   # Audit trail table
 │   │   ├── services/api.js       # Axios API client
-│   │   └── App.jsx               # Tab navigation (Stores / Activity Log)
+│   │   ├── App.jsx               # Tab navigation (Stores / Activity Log)
+│   │   └── index.css             # Full design system (colors, cards, modals)
 │   ├── Dockerfile                # Multi-stage: Node build -> nginx serve
 │   └── nginx.conf                # Reverse proxy /api/ to backend
 ├── backend/                      # Node.js + Express API
 │   ├── src/
 │   │   ├── controllers/          # REST route handlers
-│   │   ├── services/             # Business logic + provisioners
+│   │   ├── services/             # Business logic + async provisioners
 │   │   ├── kubernetes/           # Helm CLI wrapper
 │   │   ├── middleware/           # Rate limiting, error handling
 │   │   ├── database/            # SQLite (better-sqlite3)
@@ -375,6 +585,8 @@ See **[docs/system-design.md](docs/system-design.md)** for in-depth coverage:
 
 ---
 
-## Author
+<div align="center">
 
-**Shabanya** — [github.com/ishabanya](https://github.com/ishabanya)
+**Shabanya** | [github.com/ishabanya](https://github.com/ishabanya)
+
+</div>
