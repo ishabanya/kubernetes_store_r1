@@ -10,7 +10,7 @@ backend:
     LOG_LEVEL: info
     MAX_STORES: "10"
     MAX_CONCURRENT_PROVISIONS: "3"
-    BASE_DOMAIN: 127.0.0.1.nip.io
+    BASE_DOMAIN: 127-0-0-1.nip.io
     STORE_PORT: "8082"
     HELM_CHART_PATH: /app/helm/woocommerce-store
   resources:
@@ -48,5 +48,5 @@ dashboard:
 
 ingress:
   className: nginx
-  dashboardHost: dashboard.127.0.0.1.nip.io
-  backendHost: api.127.0.0.1.nip.io
+  dashboardHost: dashboard.127-0-0-1.nip.io
+  backendHost: api.127-0-0-1.nip.io

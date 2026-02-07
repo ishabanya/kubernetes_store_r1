@@ -11,7 +11,7 @@ User → React Dashboard → Express Backend API → Kubernetes API / Helm CLI
                                               ├── MariaDB (StatefulSet + PVC)
                                               ├── WordPress+WooCommerce (Deployment + PVC)
                                               ├── WP-CLI Init Job (post-install hook)
-                                              ├── Ingress (<store>.127.0.0.1.nip.io)
+                                              ├── Ingress (<store>.127-0-0-1.nip.io)
                                               ├── Secrets, ResourceQuota, LimitRange
                                               └── NetworkPolicy
 ```
@@ -149,18 +149,18 @@ Start-Process "http://localhost:8080"
 ### Accessing Stores
 
 Once a store is created and shows **Ready** status:
-- **Store URL**: `http://<store-name>.127.0.0.1.nip.io:8082` (clickable from dashboard)
-- **Admin URL**: `http://<store-name>.127.0.0.1.nip.io:8082/wp-admin`
+- **Store URL**: `http://<store-name>.127-0-0-1.nip.io:8082` (clickable from dashboard)
+- **Admin URL**: `http://<store-name>.127-0-0-1.nip.io:8082/wp-admin`
 
 > Port 8082 is the ingress controller port-forward. Both port-forwards (8080 for dashboard, 8082 for stores) must be running.
 
 ### Local Domain Approach
 
 We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
-- `<store-name>.127.0.0.1.nip.io` resolves to `127.0.0.1` automatically
+- `<store-name>.127-0-0-1.nip.io` resolves to `127.0.0.1` automatically
 - No `/etc/hosts` editing required
 - Works on all platforms (macOS, Windows, Linux)
-- Each store gets a unique subdomain (e.g., `my-shop.127.0.0.1.nip.io:8082`)
+- Each store gets a unique subdomain (e.g., `my-shop.127-0-0-1.nip.io:8082`)
 
 ## Creating a Store and Placing an Order
 
@@ -179,7 +179,7 @@ We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
 - If a store fails, the error message is displayed on the card
 
 ### Step 3: Place a Test Order (COD)
-1. Click the **Store URL** link on the store card (e.g., `http://my-shop.127.0.0.1.nip.io:8082`)
+1. Click the **Store URL** link on the store card (e.g., `http://my-shop.127-0-0-1.nip.io:8082`)
 2. You'll see the WooCommerce Storefront with sample products
 3. Find a product (e.g., "Sample Product" at $19.99)
 4. Click **Add to Cart**
@@ -188,7 +188,7 @@ We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
 7. Select **Cash on Delivery** as the payment method
 8. Click **Place Order**
 9. Verify the order was created:
-   - Click the **Admin URL** on the store card (e.g., `http://my-shop.127.0.0.1.nip.io:8082/wp-admin`)
+   - Click the **Admin URL** on the store card (e.g., `http://my-shop.127-0-0-1.nip.io:8082/wp-admin`)
    - Log in with the admin credentials you set during store creation
    - Navigate to **WooCommerce → Orders** — you should see the order
    - If you used auto-generated password, retrieve it: `kubectl get secret my-shop-wp-secret -n store-my-shop -o jsonpath='{.data.admin-password}' | base64 -d`
@@ -240,7 +240,7 @@ helm upgrade --install store-platform ./helm/store-platform/ \
 | Concern | Local (Minikube) | Production (k3s VPS) |
 |---------|------------------|----------------------|
 | Ingress class | nginx | traefik |
-| Base domain | 127.0.0.1.nip.io | stores.yourdomain.com |
+| Base domain | 127-0-0-1.nip.io | stores.yourdomain.com |
 | Image pull | `Never` (local build) | `Always` (registry) |
 | Replicas | 1 | 2 (HPA up to 5) |
 | TLS | None | cert-manager |

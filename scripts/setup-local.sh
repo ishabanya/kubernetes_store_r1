@@ -58,8 +58,8 @@ echo "Dashboard: http://localhost:8080"
 
 # Port-forward ingress controller on 8082 (for store URLs)
 kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80 &>/dev/null &
-echo "Store URLs available on port 8082 (e.g., http://<store>.127.0.0.1.nip.io:8082)"
+echo "Store URLs available on port 8082 (e.g., http://<store>.127-0-0-1.nip.io:8082)"
 
 echo ""
 echo "Open http://localhost:8080 in your browser to access the dashboard."
-echo "Stores will be accessible at http://<store-name>.127.0.0.1.nip.io:8082"
+echo "Stores will be accessible at http://<store-name>.127-0-0-1.nip.io:8082"

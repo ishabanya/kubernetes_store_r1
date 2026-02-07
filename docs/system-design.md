@@ -60,7 +60,7 @@ Delete Store Request:
 
 ### 5. nip.io for Local DNS
 - Zero-configuration wildcard DNS
-- `<anything>.127.0.0.1.nip.io` resolves to 127.0.0.1
+- `<anything>.127-0-0-1.nip.io` resolves to 127.0.0.1
 - No /etc/hosts editing needed for Minikube + tunnel
 - In production, replaced with real wildcard DNS via Helm values
 
@@ -187,7 +187,7 @@ Delete Store Request:
 |---------|---------------------------|--------------------------------|
 | Kubernetes | Minikube | k3s on VPS |
 | Ingress class | nginx (Minikube addon) | traefik (k3s default) |
-| Base domain | 127.0.0.1.nip.io | stores.yourdomain.com |
+| Base domain | 127-0-0-1.nip.io | stores.yourdomain.com |
 | Image pull | `Never` (local build) | `Always` (container registry) |
 | Replicas | 1 | 2 (with HPA up to 5) |
 | Max stores | 10 | 50 |

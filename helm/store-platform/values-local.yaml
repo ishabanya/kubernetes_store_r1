@@ -1,7 +1,7 @@
 backend:
   imagePullPolicy: Never
   env:
-    BASE_DOMAIN: 127.0.0.1.nip.io
+    BASE_DOMAIN: 127-0-0-1.nip.io
     STORE_PORT: "8082"
 
 dashboard:
@@ -9,5 +9,5 @@ dashboard:
 
 ingress:
   className: nginx
-  dashboardHost: dashboard.127.0.0.1.nip.io
-  backendHost: api.127.0.0.1.nip.io
+  dashboardHost: dashboard.127-0-0-1.nip.io
+  backendHost: api.127-0-0-1.nip.io

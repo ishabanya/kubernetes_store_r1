@@ -6,7 +6,7 @@
 |---------|------------------|----------------------|
 | Kubernetes | Minikube | k3s |
 | Ingress class | nginx | traefik |
-| Base domain | 127.0.0.1.nip.io | stores.yourdomain.com |
+| Base domain | 127-0-0-1.nip.io | stores.yourdomain.com |
 | Storage class | standard | local-path |
 | PVC sizes | Small (1-2Gi) | Larger (5-10Gi) |
 | Image pull policy | Never (local build) | Always (registry) |
