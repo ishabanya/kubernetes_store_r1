@@ -1,0 +1,28 @@
+backend:
+  imagePullPolicy: Always
+  replicas: 2
+  env:
+    BASE_DOMAIN: stores.yourdomain.com
+    STORE_PORT: ""
+    MAX_STORES: "50"
+    MAX_CONCURRENT_PROVISIONS: "5"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPU: 70
+    targetMemory: 80
+
+dashboard:
+  imagePullPolicy: Always
+  replicas: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPU: 70
+
+ingress:
+  className: traefik
+  dashboardHost: dashboard.stores.yourdomain.com
+  backendHost: api.stores.yourdomain.com

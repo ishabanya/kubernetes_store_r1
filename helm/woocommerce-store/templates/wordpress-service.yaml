@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.storeName }}-wordpress
+  namespace: store-{{ .Values.storeName }}
+  labels:
+    app: wordpress
+    store: {{ .Values.storeName }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: wordpress
+    store: {{ .Values.storeName }}

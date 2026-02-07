@@ -1,0 +1,10 @@
+mariadb:
+  storage: 5Gi
+
+wordpress:
+  storage: 10Gi
+
+ingress:
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod

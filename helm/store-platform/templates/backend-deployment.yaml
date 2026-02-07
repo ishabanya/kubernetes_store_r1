@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      serviceAccountName: store-platform-backend
+      containers:
+        - name: backend
+          image: {{ .Values.backend.image }}
+          imagePullPolicy: {{ .Values.backend.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: backend-config
+          volumeMounts:
+            - name: sqlite-data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            limits:
+              memory: {{ .Values.backend.resources.limits.memory }}
+              cpu: {{ .Values.backend.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.backend.resources.requests.memory }}
+              cpu: {{ .Values.backend.resources.requests.cpu }}
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: backend-sqlite-data

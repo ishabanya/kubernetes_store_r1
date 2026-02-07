@@ -1,0 +1,52 @@
+namespace: store-platform
+
+backend:
+  image: store-platform-backend:latest
+  imagePullPolicy: Never
+  port: 3001
+  replicas: 1
+  env:
+    NODE_ENV: production
+    LOG_LEVEL: info
+    MAX_STORES: "10"
+    MAX_CONCURRENT_PROVISIONS: "3"
+    BASE_DOMAIN: 127.0.0.1.nip.io
+    STORE_PORT: "8082"
+    HELM_CHART_PATH: /app/helm/woocommerce-store
+  resources:
+    limits:
+      memory: 256Mi
+      cpu: 250m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+  sqliteStorage: 1Gi
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPU: 70
+    targetMemory: 80
+
+dashboard:
+  image: store-platform-dashboard:latest
+  imagePullPolicy: Never
+  port: 80
+  replicas: 1
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 100m
+    requests:
+      memory: 64Mi
+      cpu: 50m
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPU: 70
+
+ingress:
+  className: nginx
+  dashboardHost: dashboard.127.0.0.1.nip.io
+  backendHost: api.127.0.0.1.nip.io

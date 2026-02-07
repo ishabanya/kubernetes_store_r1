@@ -1,0 +1,48 @@
+storeName: ""
+storeDomain: ""
+storePort: "80"
+
+mariadb:
+  image: mariadb:10.11
+  rootPassword: changeme
+  database: wordpress
+  user: wordpress
+  password: changeme
+  storage: 2Gi
+  resources:
+    limits:
+      memory: 256Mi
+      cpu: 250m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+
+wordpress:
+  image: wordpress:apache
+  cliImage: wordpress:cli
+  adminUser: admin
+  adminPassword: changeme
+  adminEmail: admin@example.com
+  storage: 2Gi
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 200m
+
+ingress:
+  className: nginx
+  annotations: {}
+
+resourceQuota:
+  maxPods: 6
+  maxMemory: 3Gi
+  maxCpu: "2"
+
+limitRange:
+  defaultMemory: 512Mi
+  defaultCpu: 500m
+  defaultRequestMemory: 128Mi
+  defaultRequestCpu: 100m

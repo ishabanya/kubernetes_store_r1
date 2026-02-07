@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: {{ .Values.namespace }}
+data:
+  NODE_ENV: {{ .Values.backend.env.NODE_ENV }}
+  LOG_LEVEL: {{ .Values.backend.env.LOG_LEVEL }}
+  MAX_STORES: {{ .Values.backend.env.MAX_STORES | quote }}
+  MAX_CONCURRENT_PROVISIONS: {{ .Values.backend.env.MAX_CONCURRENT_PROVISIONS | quote }}
+  BASE_DOMAIN: {{ .Values.backend.env.BASE_DOMAIN }}
+  STORE_PORT: {{ .Values.backend.env.STORE_PORT | default "" | quote }}
+  HELM_CHART_PATH: {{ .Values.backend.env.HELM_CHART_PATH }}
+  PORT: {{ .Values.backend.port | quote }}
+  DATABASE_PATH: /data/stores.db

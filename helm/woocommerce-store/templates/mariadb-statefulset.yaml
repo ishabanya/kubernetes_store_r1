@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.storeName }}-mariadb
+  namespace: store-{{ .Values.storeName }}
+  labels:
+    app: mariadb
+    store: {{ .Values.storeName }}
+spec:
+  serviceName: {{ .Values.storeName }}-mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+      store: {{ .Values.storeName }}
+  template:
+    metadata:
+      labels:
+        app: mariadb
+        store: {{ .Values.storeName }}
+    spec:
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: mariadb
+          image: {{ .Values.mariadb.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: root-password
+            - name: MARIADB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: database
+            - name: MARIADB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: user
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - localhost
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - localhost
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            limits:
+              memory: {{ .Values.mariadb.resources.limits.memory }}
+              cpu: {{ .Values.mariadb.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.mariadb.resources.requests.memory }}
+              cpu: {{ .Values.mariadb.resources.requests.cpu }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.storeName }}-mariadb-data

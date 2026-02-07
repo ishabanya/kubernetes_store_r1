@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.storeName }}-wordpress
+  namespace: store-{{ .Values.storeName }}
+  labels:
+    app: wordpress
+    store: {{ .Values.storeName }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wordpress
+      store: {{ .Values.storeName }}
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        store: {{ .Values.storeName }}
+    spec:
+      securityContext:
+        fsGroup: 33
+      containers:
+        - name: wordpress
+          image: {{ .Values.wordpress.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: {{ .Values.storeName }}-mariadb:3306
+            - name: WORDPRESS_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: user
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: password
+            - name: WORDPRESS_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.storeName }}-db-secret
+                  key: database
+          volumeMounts:
+            - name: wordpress-data
+              mountPath: /var/www/html
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            limits:
+              memory: {{ .Values.wordpress.resources.limits.memory }}
+              cpu: {{ .Values.wordpress.resources.limits.cpu }}
+            requests:
+              memory: {{ .Values.wordpress.resources.requests.memory }}
+              cpu: {{ .Values.wordpress.resources.requests.cpu }}
+      volumes:
+        - name: wordpress-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.storeName }}-wordpress-data

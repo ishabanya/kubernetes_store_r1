@@ -1,0 +1,8 @@
+mariadb:
+  storage: 1Gi
+
+wordpress:
+  storage: 2Gi
+
+ingress:
+  className: nginx

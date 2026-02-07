@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ .Values.storeName }}-quota
+  namespace: store-{{ .Values.storeName }}
+spec:
+  hard:
+    pods: "{{ .Values.resourceQuota.maxPods }}"
+    requests.memory: {{ .Values.resourceQuota.maxMemory }}
+    requests.cpu: {{ .Values.resourceQuota.maxCpu }}
+    limits.memory: {{ .Values.resourceQuota.maxMemory }}
+    limits.cpu: {{ .Values.resourceQuota.maxCpu }}

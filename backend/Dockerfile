@@ -1,0 +1,21 @@
+FROM node:22-alpine
+
+RUN apk add --no-cache curl bash \
+  && curl -fsSL https://get.helm.sh/helm-v3.16.4-linux-arm64.tar.gz | tar xz -C /tmp \
+  && mv /tmp/linux-arm64/helm /usr/local/bin/helm \
+  && rm -rf /tmp/linux-arm64 \
+  && curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.31.4/bin/linux/arm64/kubectl" \
+  && chmod +x /usr/local/bin/kubectl
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --production
+
+COPY src/ ./src/
+
+RUN mkdir -p /data
+
+EXPOSE 3001
+
+CMD ["node", "src/index.js"]
