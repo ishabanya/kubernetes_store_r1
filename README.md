@@ -24,21 +24,73 @@ User → React Dashboard → Express Backend API → Kubernetes API / Helm CLI
 
 ## Prerequisites
 
-- Docker (Docker Desktop or Colima)
+- Docker
 - Minikube
 - kubectl
 - Helm 3
 
-Install on macOS:
+### macOS
+
 ```bash
-brew install minikube kubectl helm
-# Docker Desktop:
+# Install Homebrew (if not installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Docker Desktop
 brew install --cask docker
 # Or use Colima (lightweight alternative):
 brew install docker colima && colima start --cpu 2 --memory 4 --disk 8
+
+# Install Kubernetes tools
+brew install minikube kubectl helm
+```
+
+### Windows
+
+```powershell
+# Install Chocolatey (if not installed) — run PowerShell as Administrator
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+# Install Docker Desktop (requires WSL2 — enable it first if not already)
+wsl --install
+choco install docker-desktop -y
+
+# Install Kubernetes tools
+choco install minikube kubernetes-cli kubernetes-helm -y
+
+# Restart terminal after installation
+```
+
+> **Windows notes:**
+> - Docker Desktop requires **WSL2** enabled. After installing, open Docker Desktop and ensure "Use the WSL 2 based engine" is checked in Settings > General.
+> - Use **PowerShell** or **Git Bash** for all commands below. If using PowerShell, replace `eval $(minikube docker-env)` with `& minikube docker-env --shell powershell | Invoke-Expression`.
+> - `minikube tunnel` must run in a separate terminal (as Administrator on Windows).
+
+### Linux (Ubuntu/Debian)
+
+```bash
+# Install Docker
+sudo apt-get update
+sudo apt-get install -y docker.io
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Install Minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# Install kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install kubectl /usr/local/bin/kubectl
+
+# Install Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
 ## Quick Start (Local with Minikube)
+
+### macOS / Linux
 
 ```bash
 # 1. Start Minikube with sufficient resources
@@ -54,15 +106,13 @@ docker build -t store-platform-dashboard:latest ./dashboard/
 helm upgrade --install store-platform ./helm/store-platform/ \
   -f ./helm/store-platform/values-local.yaml --wait
 
-# 4. Start the tunnel (required for ingress on macOS)
-minikube tunnel
+# 4. Port-forward to access the dashboard and stores
+kubectl port-forward -n store-platform svc/dashboard 8080:80 &
+kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80 &
 
-# 5. Access the dashboard
-# Port-forward for direct access:
-kubectl port-forward -n store-platform svc/dashboard 8080:80
-open http://localhost:8080
-# Or via ingress (requires tunnel):
-open http://dashboard.127.0.0.1.nip.io
+# 5. Open the dashboard
+open http://localhost:8080    # macOS
+xdg-open http://localhost:8080  # Linux
 ```
 
 Or use the setup script:
@@ -70,13 +120,47 @@ Or use the setup script:
 chmod +x scripts/setup-local.sh && ./scripts/setup-local.sh
 ```
 
+### Windows (PowerShell)
+
+```powershell
+# 1. Start Minikube with sufficient resources
+minikube start --cpus=2 --memory=3072 --driver=docker
+minikube addons enable ingress
+
+# 2. Build images inside Minikube's Docker daemon
+& minikube docker-env --shell powershell | Invoke-Expression
+docker build -t store-platform-backend:latest -f Dockerfile.backend .
+docker build -t store-platform-dashboard:latest ./dashboard/
+
+# 3. Deploy the platform
+helm upgrade --install store-platform ./helm/store-platform/ `
+  -f ./helm/store-platform/values-local.yaml --wait
+
+# 4. Port-forward to access the dashboard and stores (run each in a separate terminal)
+# Terminal 1:
+kubectl port-forward -n store-platform svc/dashboard 8080:80
+# Terminal 2:
+kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80
+
+# 5. Open the dashboard
+Start-Process "http://localhost:8080"
+```
+
+### Accessing Stores
+
+Once a store is created and shows **Ready** status:
+- **Store URL**: `http://<store-name>.127.0.0.1.nip.io:8082` (clickable from dashboard)
+- **Admin URL**: `http://<store-name>.127.0.0.1.nip.io:8082/wp-admin`
+
+> Port 8082 is the ingress controller port-forward. Both port-forwards (8080 for dashboard, 8082 for stores) must be running.
+
 ### Local Domain Approach
 
 We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
 - `<store-name>.127.0.0.1.nip.io` resolves to `127.0.0.1` automatically
 - No `/etc/hosts` editing required
-- Works with `minikube tunnel` which exposes ingress on localhost
-- Each store gets a unique subdomain (e.g., `my-shop.127.0.0.1.nip.io`)
+- Works on all platforms (macOS, Windows, Linux)
+- Each store gets a unique subdomain (e.g., `my-shop.127.0.0.1.nip.io:8082`)
 
 ## Creating a Store and Placing an Order
 
@@ -85,7 +169,8 @@ We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
 2. Click **Create Store**
 3. Enter a name (lowercase letters, numbers, hyphens — e.g., `my-shop`)
 4. Select **WooCommerce** as the store type
-5. Click **Create** — the store starts provisioning
+5. Set your **Admin Username** and **Admin Password** (or leave password empty to auto-generate)
+6. Click **Create** — the store starts provisioning
 
 ### Step 2: Wait for Ready Status
 - The dashboard auto-polls every 5 seconds
@@ -94,19 +179,19 @@ We use [nip.io](https://nip.io) for zero-configuration wildcard DNS:
 - If a store fails, the error message is displayed on the card
 
 ### Step 3: Place a Test Order (COD)
-1. Click the **Store URL** link on the store card (e.g., `http://my-shop.127.0.0.1.nip.io`)
-   - If using port-forward: `kubectl port-forward -n store-my-shop svc/my-shop-wordpress 8081:80`
-2. You'll see the WordPress storefront with WooCommerce
-3. Browse to **Shop** — find the "Sample Product" ($19.99)
+1. Click the **Store URL** link on the store card (e.g., `http://my-shop.127.0.0.1.nip.io:8082`)
+2. You'll see the WooCommerce Storefront with sample products
+3. Find a product (e.g., "Sample Product" at $19.99)
 4. Click **Add to Cart**
 5. Go to **Cart** → **Proceed to Checkout**
 6. Fill in billing details (any test data is fine)
 7. Select **Cash on Delivery** as the payment method
 8. Click **Place Order**
 9. Verify the order was created:
-   - Go to the **Admin URL** (e.g., `http://my-shop.127.0.0.1.nip.io/wp-admin`)
-   - Log in with the generated admin credentials (stored in Kubernetes secret: `kubectl get secret my-shop-wp-secret -n store-my-shop -o jsonpath='{.data.admin-password}' | base64 -d`)
+   - Click the **Admin URL** on the store card (e.g., `http://my-shop.127.0.0.1.nip.io:8082/wp-admin`)
+   - Log in with the admin credentials you set during store creation
    - Navigate to **WooCommerce → Orders** — you should see the order
+   - If you used auto-generated password, retrieve it: `kubectl get secret my-shop-wp-secret -n store-my-shop -o jsonpath='{.data.admin-password}' | base64 -d`
 
 ### Step 4: Delete a Store
 1. Click **Delete** on the store card in the dashboard
