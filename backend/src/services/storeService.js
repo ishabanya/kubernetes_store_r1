@@ -54,8 +54,14 @@ const setProvisionFinished = db.prepare(`
   UPDATE stores SET provision_finished_at = CURRENT_TIMESTAMP WHERE id = ?
 `);
 
+function normalizeIp(ip) {
+  if (!ip || ip === 'system') return ip;
+  // Strip ::ffff: IPv6-mapped IPv4 prefix
+  return ip.replace(/^::ffff:/, '');
+}
+
 function audit(storeId, action, details, ip) {
-  insertAuditLog.run(storeId, action, JSON.stringify(details), ip);
+  insertAuditLog.run(storeId, action, JSON.stringify(details), normalizeIp(ip));
 }
 
 export async function createStore({ name, type = 'woocommerce', adminUser = 'admin', adminPassword = null }, ip) {

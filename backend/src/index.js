@@ -10,6 +10,9 @@ import logger from './utils/logger.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy (nginx) so req.ip uses X-Forwarded-For
+app.set('trust proxy', true);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
