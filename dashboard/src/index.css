@@ -288,6 +288,18 @@ body {
   font-weight: 500;
 }
 
+.activity-log-ip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: #eff6ff;
+  color: #3b82f6;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
 .activity-log-time {
   color: #94a3b8;
 }

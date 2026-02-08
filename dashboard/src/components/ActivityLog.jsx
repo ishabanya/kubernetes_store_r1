@@ -31,7 +31,12 @@ export default function ActivityLog() {
       <h2>Activity Log</h2>
       {logs.map((log) => (
         <div key={log.id} className="activity-log-entry">
-          <span className="activity-log-action">{log.action}</span>
+          <span className="activity-log-action">
+            {log.action}
+            {log.ip_address && (
+              <span className="activity-log-ip">{log.ip_address}</span>
+            )}
+          </span>
           <span className="activity-log-time">
             {new Date(log.created_at + 'Z').toLocaleString()}
           </span>
